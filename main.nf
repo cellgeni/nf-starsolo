@@ -8,6 +8,13 @@ def helpMessage() {
     starsolo pipeline
     =================
     This pipeline runs STARsolo.
+    The only parameter you need to input is:
+      --SAMPLEFILE /full/path/to/sample/file
+    This file should contain a single sampleID per line. 
+    An example can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
+    The default reference genome is: GRCh38 2020A
+    To change these defaults input:
+      --reference /path/to/reference    
     """.stripIndent()
 }
 
@@ -21,8 +28,35 @@ def errorMessage() {
     ==============
     starsolo error
     ==============
+    You failed to provide the --SAMPLEFILE input parameter
+    Please provide this parameter as follows:
+      --SAMPLEFILE /full/path/to/sample/file
+    The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1
+}
+
+process email_startup {
+
+  shell:
+  '''
+  contents=`cat !{params.SAMPLEFILE}`
+  sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
+  Subject: Launched pipeline
+  From: noreply-cellgeni-pipeline@sanger.ac.uk
+
+  Hi there, you've launched Cellular Genetics Informatics' STARsolo pipeline.
+  Your parameters are:
+  Samplefile: !{params.SAMPLEFILE}
+  The Genome GTF used is: !{params.reference}
+
+  Your sample file looks like:
+  $contents
+
+  Thanks,
+  Cellular Genetics Informatics
+  EOF
+  '''
 }
 
 //Puts samplefile into a channel unless it is null, if it is null then it displays error message and exits with status 1.
@@ -35,6 +69,8 @@ ch_sample_list
 
 process get_starsolo {
 
+  maxForks 2
+  
   input:
   val(sample) from ch_samplelines_sf
 
@@ -80,45 +116,63 @@ process crams_to_fastqs {
 ch_fastqs
   .collect()
   .set{ ch_fastqs_starsolo }
-  
 
 process run_starsolo {
 
-  publishDir "$params.outdir", mode: 'copy'
+  publishDir "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
 
   input:
   val(sample) from ch_sample_starsolo
   path fastqs from ch_fastqs_starsolo
 
   output:
-  path(sample)
-  env(fastq_dir) into ch_del
+  path(sample) into ch_collect
 
   shell:
   '''
-  mkdir -p "!{params.outdir}/fastqs" 
+  fastq_dir="/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
+  mkdir -p $fastq_dir
   for i in !{fastqs};
-    do cp $i "!{params.outdir}/fastqs"
+    do cp $i $fastq_dir
   done
   if [[ !{params.keep_bams} = true ]]; then
-    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} "!{params.outdir}/fastqs" !{params.reference} "true"
+    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} $fastq_dir !{params.reference} "true"
   else
-    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} "!{params.outdir}/fastqs" !{params.reference} "false"
+    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} $fastq_dir !{params.reference} "false"
   fi
-  fastq_dir="!{params.outdir}/fastqs"
+  !{baseDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''
 }
 
-process delete_fastqs {
+ch_collect
+  .collect()
+  .set{ ch_finish }
 
-  when:
-  params.keep_fastqs == false
+process email_finish {
 
   input:
-  val(fastq_dir) from ch_del
-
+  val(samples) from ch_finish
+  
   shell:
   '''
-  rm -rf "!{fastq_dir}"
+  rm -rf "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"  
+  sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
+  Subject: Finished pipeline
+  From: noreply-cellgeni-pipeline@sanger.ac.uk
+
+  Hi there, your run of Cellular Genetics Informatics' STARsolo pipeline is complete.
+
+  Results are available here: "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results"
+
+  The results will be deleted in a week so please copy your data to a sensible location, i.e.:
+  cp -r "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results" /path/to/sensible/location
+
+  The STARsolo command run for each sample can be found inside "starsolo-results/sampleID/cmd.txt"
+
+  The STARsolo script used is availabe here: https://github.com/cellgeni/nf-starsolo/blob/main/bin/starsolo_10x_auto.sh
+
+  Thanks,
+  Cellular Genetics Informatics
+  EOF
   '''
 }

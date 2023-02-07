@@ -189,12 +189,22 @@ echo "--------------------------------------------------------------------------
 
 if [[ $PAIRED == "True" ]]
 then
+  echo "STAR --runThreadN ${CPUS} --genomeDir ${REF} --readFilesIn ${R1} ${R2} --runDirPerm All_RWX ${GZIP} ${BAM} --soloBarcodeMate 1 --clip5pNbases 39 0 \
+     --soloType CB_UMI_Simple --soloCBwhitelist ${BC} --soloCBstart 1 --soloCBlen ${CBLEN} --soloUMIstart $((CBLEN+1)) --soloUMIlen ${UMILEN} --soloStrand Forward
+     --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
+     --soloCellFilter EmptyDrops_CR --outFilterScoreMin 30 \
+     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM --outReadsUnmapped Fastx" > cmd.txt
   STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn $R1 $R2 --runDirPerm All_RWX $GZIP $BAM --soloBarcodeMate 1 --clip5pNbases 39 0 \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloCBstart 1 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) --soloUMIlen $UMILEN --soloStrand Forward \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
      --soloCellFilter EmptyDrops_CR --outFilterScoreMin 30 \
      --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM --outReadsUnmapped Fastx
 else 
+  echo "STAR --runThreadN ${CPUS} --genomeDir ${REF} --readFilesIn ${R2} ${R1} --runDirPerm All_RWX ${GZIP} ${BAM} \
+     --soloType CB_UMI_Simple --soloCBwhitelist ${BC} --soloBarcodeReadLength 0 --soloCBlen ${CBLEN} --soloUMIstart $((CBLEN+1)) --soloUMIlen ${UMILEN} --soloStran
+     --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
+     --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
+     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM --outReadsUnmapped Fastx" > cmd.txt
   STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn $R2 $R1 --runDirPerm All_RWX $GZIP $BAM \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) --soloUMIlen $UMILEN --soloStrand $STRAND \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
@@ -211,6 +221,8 @@ fi
 ## finally, let's gzip all outputs
 gzip Unmapped.out.mate1 &
 gzip Unmapped.out.mate2 &
+rm test.R1.fastq &
+rm test.R2.fastq
 
 cd output
 for i in Gene/raw Gene/filtered GeneFull/raw GeneFull/filtered Velocyto/raw Velocyto/filtered

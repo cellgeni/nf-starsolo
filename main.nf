@@ -35,7 +35,6 @@ def errorMessage() {
     """.stripIndent()
     exit 1
 }
-/*
 process email_startup {
 
   shell:
@@ -58,7 +57,6 @@ process email_startup {
   EOF
   '''
 }
-*/
 //Puts samplefile into a channel unless it is null, if it is null then it displays error message and exits with status 1.
 ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
 
@@ -99,7 +97,7 @@ process crams_to_fastqs {
   set val(sample), val(cram) from ch_sample_cram
 
   output:
-  //path('*fastq.gz') into ch_fastqs
+  path('*fastq.gz') into ch_fastqs
   
   shell:
   '''
@@ -109,7 +107,6 @@ process crams_to_fastqs {
   done
   '''
 }
-/*
 //have to collect fastqs and then write them to fastqs dir before invoking starsolo
 //ensures all fastqs are in fastq dir before starsolo runs
 ch_fastqs
@@ -175,4 +172,3 @@ process email_finish {
   EOF
   '''
 }
-*/

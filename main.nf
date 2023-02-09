@@ -35,6 +35,7 @@ def errorMessage() {
     """.stripIndent()
     exit 1
 }
+
 process email_startup {
 
   shell:
@@ -74,8 +75,7 @@ process get_starsolo {
 
   output:
   //outputs multiple objects: sample name (generated in the process shell so needs env) and a list of all files generated in processing
-  val(sample) into ch_sample
-  path('*.cram') into ch_cram
+  set val(sample), path('*.cram') into ch_cram
 
   shell:
   '''
@@ -83,25 +83,20 @@ process get_starsolo {
   '''
 }
 
-ch_sample_starsolo = Channel.create()
-
-//Create maps of sample then a cram file
-ch_sample
-  //.tap ( ch_sample_starsolo )
-  .combine( ch_cram.flatten() )
-  .set { ch_sample_cram }
 
 process crams_to_fastqs {
 
   input:
-  set val(sample), val(cram) from ch_sample_cram
+  set val(sample), path(cram) from ch_cram
 
   output:
   path('*fastq.gz') into ch_fastqs
   
   shell:
   '''
-  !{baseDir}/bin/cram2fastq_10x.sh !{cram}
+  for cr in !{cram}; do
+    !{baseDir}/bin/cram2fastq_10x.sh ${cr}
+  done
   for fq in *.fastq.gz; do
     mv $fq "!{sample}_${fq}"
   done
@@ -112,6 +107,7 @@ process crams_to_fastqs {
 ch_fastqs
   .collect()
   .set{ ch_fastqs_starsolo }
+
 
 process run_starsolo {
 

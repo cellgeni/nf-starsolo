@@ -90,6 +90,7 @@ process crams_to_fastqs {
   set val(sample), path(cram) from ch_cram
 
   output:
+  val(sample) into ch_sample_starsolo
   path('*fastq.gz') into ch_fastqs
   
   shell:

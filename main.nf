@@ -90,48 +90,37 @@ process crams_to_fastqs {
   set val(sample), path(cram) from ch_cram
 
   output:
-  val(sample) into ch_sample_starsolo
-  path('*fastq.gz') into ch_fastqs
+  set val(sample), env(fastq_dir) into ch_sample_starsolo
   
   shell:
   '''
+  fastq_dir=/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs
+  mkdir -p $fastq_dir
   for cr in !{cram}; do
     !{baseDir}/bin/cram2fastq_10x.sh ${cr}
   done
   for fq in *.fastq.gz; do
-    mv $fq "!{sample}_${fq}"
+    mv $fq "${fastq_dir}/!{sample}_${fq}"
   done
   '''
 }
-//have to collect fastqs and then write them to fastqs dir before invoking starsolo
-//ensures all fastqs are in fastq dir before starsolo runs
-ch_fastqs
-  .collect()
-  .set{ ch_fastqs_starsolo }
-
 
 process run_starsolo {
 
   publishDir "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
 
   input:
-  val(sample) from ch_sample_starsolo
-  path fastqs from ch_fastqs_starsolo
+  set val(sample), val(fastq_dir) from ch_sample_starsolo
 
   output:
   path(sample) into ch_collect
 
   shell:
   '''
-  fastq_dir="/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
-  mkdir -p $fastq_dir
-  for i in !{fastqs};
-    do cp $i $fastq_dir
-  done
   if [[ !{params.keep_bams} = true ]]; then
-    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} $fastq_dir !{params.reference} "true"
+    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "true"
   else
-    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} $fastq_dir !{params.reference} "false"
+    !{baseDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false"
   fi
   !{baseDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''

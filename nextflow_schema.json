@@ -13,7 +13,7 @@
       "properties": {
         "SAMPLEFILE": {
           "type": "string",
-          "description": "The sample file provided to the pipeline with one sample ID per line. This sample is assumed to have CRAM files stored on IRODS."
+          "description": "The path to the sample file provided to the pipeline which contains one sample ID per line. This sample is assumed to have CRAM files stored on IRODS."
         },
         "sangerID": {
           "type": "string",

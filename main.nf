@@ -68,8 +68,6 @@ ch_sample_list
 
 process get_starsolo {
 
-  maxForks 2
-  
   input:
   val(sample) from ch_samplelines_sf
 

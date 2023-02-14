@@ -1,7 +1,5 @@
 #!/usr/bin/env nextflow
 
-nextflow.enable.dsl=1
-
 def helpMessage() {
     log.info"""
     =================
@@ -18,19 +16,14 @@ def helpMessage() {
     """.stripIndent()
 }
 
-if (params.HELP) {
-  helpMessage()
-  exit 0
-}
-
 def errorMessage() {
     log.info"""
     ==============
     starsolo error
     ==============
-    You failed to provide the --SAMPLEFILE input parameter
-    Please provide this parameter as follows:
-      --SAMPLEFILE /full/path/to/sample/file
+    You failed to provide the SAMPLEFILE or sangerID input parameters
+    Please provide these parameters as follows:
+      --SAMPLEFILE /full/path/to/sample/file --sangerID user99
     The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1
@@ -58,22 +51,15 @@ process email_startup {
   EOF
   '''
 }
-//Puts samplefile into a channel unless it is null, if it is null then it displays error message and exits with status 1.
-ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
-
-//Each line of the sample file is read and then emitted to its own channel which is used as input to the first process, so each sample will be ran in parallel
-ch_sample_list
-  .flatMap{ it.readLines() }
-  .set { ch_samplelines_sf }
 
 process get_starsolo {
 
   input:
-  val(sample) from ch_samplelines_sf
+  val(sample)
 
   output:
   //outputs multiple objects: sample name (generated in the process shell so needs env) and a list of all files generated in processing
-  set val(sample), path('*.cram') into ch_cram
+  tuple val(sample), path('*.cram'), emit: sample_crams  
 
   shell:
   '''
@@ -81,14 +67,13 @@ process get_starsolo {
   '''
 }
 
-
 process crams_to_fastqs {
 
   input:
-  set val(sample), path(cram) from ch_cram
+  tuple val(sample), path(cram)
 
   output:
-  set val(sample), env(fastq_dir) into ch_sample_starsolo
+  tuple val(sample), env(fastq_dir), emit: sample_fastqdir 
   
   shell:
   '''
@@ -108,10 +93,10 @@ process run_starsolo {
   publishDir "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
 
   input:
-  set val(sample), val(fastq_dir) from ch_sample_starsolo
+  tuple val(sample), val(fastq_dir)
 
   output:
-  path(sample) into ch_collect
+  path(sample)
 
   shell:
   '''
@@ -124,18 +109,14 @@ process run_starsolo {
   '''
 }
 
-ch_collect
-  .collect()
-  .set{ ch_finish }
-
 process email_finish {
 
   input:
-  val(samples) from ch_finish
-  
+  val(samples)
+
   shell:
   '''
-  rm -rf "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"  
+  rm -rf "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
   sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
   Subject: Finished pipeline
   From: noreply-cellgeni-pipeline@sanger.ac.uk
@@ -155,4 +136,23 @@ process email_finish {
   Cellular Genetics Informatics
   EOF
   '''
+}
+
+workflow {
+  if (params.HELP) {
+    helpMessage()
+    exit 0
+  }
+  else {
+    ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
+    if (params.sangerID == null) {
+      errorMessage()
+    }
+    else {
+      email_startup()
+      ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
+      crams_to_fastqs(get_starsolo.out.sample_crams)
+      run_starsolo(crams_to_fastqs.out.sample_fastqdir) | collect | email_finish
+    }
+  }
 }

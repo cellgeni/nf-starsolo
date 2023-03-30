@@ -79,7 +79,7 @@ process crams_to_fastqs {
   
   shell:
   '''
-  fastq_dir=/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs
+  fastq_dir=/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs
   mkdir -p $fastq_dir
   for cr in !{cram}; do
     !{baseDir}/bin/cram2fastq_10x.sh ${cr}
@@ -92,7 +92,7 @@ process crams_to_fastqs {
 
 process run_starsolo {
 
-  publishDir "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
+  publishDir "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
 
   input:
   tuple val(sample), val(fastq_dir)
@@ -118,17 +118,17 @@ process email_finish {
 
   shell:
   '''
-  rm -rf "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
+  rm -rf "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
   sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
   Subject: Finished pipeline
   From: noreply-cellgeni-pipeline@sanger.ac.uk
 
   Hi there, your run of Cellular Genetics Informatics' STARsolo pipeline is complete.
 
-  Results are available here: "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results"
+  Results are available here: "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results"
 
   The results will be deleted in a week so please copy your data to a sensible location, i.e.:
-  cp -r "/lustre/scratch126/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results" /path/to/sensible/location
+  cp -r "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results" /path/to/sensible/location
 
   The STARsolo command run for each sample can be found inside "starsolo-results/sampleID/cmd.txt"
 

@@ -2,14 +2,13 @@
 
 set -euo pipefail
 
-samplefile=/nfs/cellgeni/tickets/tic-2036/actions/example.txt
-config=/nfs/cellgeni/tickets/tic-2036/actions/nextflow.config
+samplefile=actions/samples.txt
+config=actions/nextflow.config
 
 [[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
 
-nextflow run /nfs/cellgeni/tickets/tic-2036/actions/main.nf \
+nextflow run cellgeni/nf-starsolo \
   --SAMPLEFILE $samplefile \
-  --sangerID "user99" \
   -c $config \
   -w starsolo-work \
   --ansi-log false \

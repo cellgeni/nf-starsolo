@@ -31,29 +31,6 @@ def errorMessage() {
     exit 1
 }
 
-process email_startup {
-
-  shell:
-  '''
-  contents=`cat !{params.SAMPLEFILE}`
-  sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
-  Subject: Launched pipeline
-  From: noreply-cellgeni-pipeline@sanger.ac.uk
-
-  Hi there, you've launched Cellular Genetics Informatics' STARsolo pipeline.
-  Your parameters are:
-  Samplefile: !{params.SAMPLEFILE}
-  The Genome GTF used is: !{params.reference}
-
-  Your sample file looks like:
-  $contents
-
-  Thanks,
-  Cellular Genetics Informatics
-  EOF
-  '''
-}
-
 process get_starsolo {
 
   input:
@@ -92,7 +69,7 @@ process crams_to_fastqs {
 
 process run_starsolo {
 
-  publishDir "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/${params.sangerID}/${params.timestamp}/starsolo-results", mode: 'copy'
+  publishDir "${params.outdir}", mode: 'copy'
 
   input:
   tuple val(sample), val(fastq_dir)
@@ -111,35 +88,6 @@ process run_starsolo {
   '''
 }
 
-process email_finish {
-
-  input:
-  val(samples)
-
-  shell:
-  '''
-  rm -rf "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs"
-  sendmail "!{params.sangerID}@sanger.ac.uk" <<EOF
-  Subject: Finished pipeline
-  From: noreply-cellgeni-pipeline@sanger.ac.uk
-
-  Hi there, your run of Cellular Genetics Informatics' STARsolo pipeline is complete.
-
-  Results are available here: "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results"
-
-  The results will be deleted in a week so please copy your data to a sensible location, i.e.:
-  cp -r "/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results" /path/to/sensible/location
-
-  The STARsolo command run for each sample can be found inside "starsolo-results/sampleID/cmd.txt"
-
-  The STARsolo script used is availabe here: https://github.com/cellgeni/nf-starsolo/blob/main/bin/starsolo_10x_auto.sh
-
-  Thanks,
-  Cellular Genetics Informatics
-  EOF
-  '''
-}
-
 workflow {
   if (params.HELP) {
     helpMessage()
@@ -151,10 +99,9 @@ workflow {
       errorMessage()
     }
     else {
-      email_startup()
       ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
       crams_to_fastqs(get_starsolo.out.sample_crams)
-      run_starsolo(crams_to_fastqs.out.sample_fastqdir) | collect | email_finish
+      run_starsolo(crams_to_fastqs.out.sample_fastqdir)
     }
   }
 }

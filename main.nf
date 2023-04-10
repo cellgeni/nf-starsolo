@@ -56,7 +56,7 @@ process crams_to_fastqs {
   
   shell:
   '''
-  fastq_dir=/lustre/scratch127/cellgen/cellgeni/tickets/nextflow-tower-results/!{params.sangerID}/!{params.timestamp}/starsolo-results/fastqs
+  fastq_dir="!{params.outdir}/fastqs"
   mkdir -p $fastq_dir
   for cr in !{cram}; do
     !{baseDir}/bin/cram2fastq_10x.sh ${cr}
@@ -85,6 +85,7 @@ process run_starsolo {
     !{baseDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false"
   fi
   !{baseDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  rm -rf "!{params.outdir}/fastqs"
   '''
 }
 

@@ -23,9 +23,9 @@ def errorMessage() {
     ==============
     starsolo error
     ==============
-    You failed to provide the SAMPLEFILE or sangerID input parameters
+    You failed to provide the SAMPLEFILE input parameter
     Please provide these parameters as follows:
-      --SAMPLEFILE /full/path/to/sample/file --sangerID user99
+      --SAMPLEFILE /full/path/to/sample/file
     The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1

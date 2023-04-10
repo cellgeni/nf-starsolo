@@ -95,13 +95,8 @@ workflow {
   }
   else {
     ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
-    if (params.sangerID == null) {
-      errorMessage()
-    }
-    else {
-      ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
-      crams_to_fastqs(get_starsolo.out.sample_crams)
-      run_starsolo(crams_to_fastqs.out.sample_fastqdir)
-    }
+    ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
+    crams_to_fastqs(get_starsolo.out.sample_crams)
+    run_starsolo(crams_to_fastqs.out.sample_fastqdir)
   }
 }

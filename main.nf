@@ -8,9 +8,10 @@ def helpMessage() {
     starsolo pipeline
     =================
     This pipeline runs STARsolo.
-    The only parameter you need to input is:
+    The parameters you need to input are:
       --SAMPLEFILE /full/path/to/sample/file
-    This file should contain a single sampleID per line. 
+      --sangerID your-sanger-id
+    The sample file should contain a single sampleID per line. 
     An example can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
     The default reference genome is: GRCh38 2020A
     To change these defaults input:

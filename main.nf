@@ -84,8 +84,7 @@ process run_starsolo {
   else
     !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false"
   fi
-  !{baseDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
-  rm -rf "!{params.outdir}/fastqs"
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''
 }
 

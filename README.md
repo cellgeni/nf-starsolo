@@ -15,6 +15,7 @@ There are two branches:
 * `bin/solo_QC.sh` - a quick qc script that enables quick sanity checks that STARsolo worked correctly.
 * `bin/cram2fastq_10x.sh` - a script that converts CRAM files (usual storage type at Sanger) to fastq files. This pipeline expects CRAM files for each sample stored internally on Sanger irods that are accessed using a custom `myrods.sh` script. TO DO - update this to not use myrods.
 * `bin/starsolo_10x_auto.sh` - a script that runs STARsolo outputting: exonic, exonic+intronic and velocyto results.
+* `Dockerfile` - a dockerfile to reproduce the environment used to run the pipeline.
 
 ## Pipeline Arguments:
 * `--SAMPLEFILE` - The path to the sample file provided to the pipeline which contains one sample ID per line. This sample is assumed to have CRAM files stored on IRODS.

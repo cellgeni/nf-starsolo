@@ -1,5 +1,5 @@
 # nf-starsolo
-Our STARsolo repo but implemented in Nextflow
+Our [STARsolo repo](https://github.com/cellgeni/STARsolo) but implemented in Nextflow
 
 There are two branches:
 

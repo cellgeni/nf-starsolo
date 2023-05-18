@@ -8,13 +8,17 @@ def helpMessage() {
     starsolo pipeline
     =================
     This pipeline runs STARsolo.
-    The only parameter you need to input is:
-      --SAMPLEFILE /full/path/to/sample/file
-    This file should contain a single sampleID per line. 
-    An example can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
+    There are 2 required parameters:
+      --samplefile /full/path/to/sample/file
+      -entry starsolo-mode
+    The samplefile should contain a single sampleID per line. 
+    An example samplefile can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
+    The currently available STARsolo modes are: tenx
+    There are 2 optional parameters you can change.
+      --reference /full/path/to/reference    
+      --local /full/path/to/fastq/directory
     The default reference genome is: GRCh38 2020A
-    To change these defaults input:
-      --reference /path/to/reference    
+    The local mode allows you to provide a full path to a directory containing fastqs rather than using IRODs.
     """.stripIndent()
 }
 
@@ -23,9 +27,9 @@ def errorMessage() {
     ==============
     starsolo error
     ==============
-    You failed to provide the SAMPLEFILE input parameter
+    You failed to provide the samplefile input parameter
     Please provide these parameters as follows:
-      --SAMPLEFILE /full/path/to/sample/file
+      --samplefile /full/path/to/sample/file
     The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1
@@ -88,15 +92,25 @@ process run_starsolo {
   '''
 }
 
-workflow {
-  if (params.HELP) {
-    helpMessage()
-    exit 0
-  }
-  else {
-    ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
-    ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
+workflow irods {
+  take: sample
+  main:
+    get_starsolo(sample)
     crams_to_fastqs(get_starsolo.out.sample_crams)
-    run_starsolo(crams_to_fastqs.out.sample_fastqdir)
-  }
+  emit:
+    crams_to_fastqs.out
+}
+
+workflow tenx {
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() } 
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | run_starsolo
+    }
+    else {
+      irods(ch_sample)
+      run_starsolo(irods.out)
+    }
 }

@@ -111,9 +111,9 @@ process smartseq_starsolo {
   samplename=`basename !{samplefile}`
   sample=${samplename%.*}
   if [[ !{params.keep_bams} = true ]]; then
-    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} "true"
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "true"
   else
-    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} "false"
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "false"
   fi
   !{projectDir}/bin/solo_QC.sh ${sample} | column -t > "${sample}/qc_results.txt"
   '''

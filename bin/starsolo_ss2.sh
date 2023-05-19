@@ -9,7 +9,8 @@
 
 TSV=$1
 TAG=$2
-KEEP_BAMS=$3
+REF=$3
+KEEP_BAMS=$4
 
 if [[ ! -s $TSV ]]
 then 
@@ -19,7 +20,6 @@ fi
 
 TSV=`readlink -f $TSV` 
 CPUS=16                                                                ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
-REF=/nfs/cellgeni/STAR/mouse/2020A/index                               ## choose the appropriate reference 
 
 ## choose one of the two otions, depending on whether you need a BAM file 
 ## BAM options are for 10x and not tested with other methods

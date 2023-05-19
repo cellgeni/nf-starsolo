@@ -2,13 +2,14 @@
 
 set -euo pipefail
 
-samplefile=actions/samples.txt
-config=actions/nextflow.config
+samplefile=/path/to/manifest.txt
+config=/path/to/nextflow.config
 
 [[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
 
 nextflow run cellgeni/nf-starsolo \
-  --SAMPLEFILE $samplefile \
+  -entry smartseq \
+  --samplefile $samplefile \
   -c $config \
   -w starsolo-work \
   --ansi-log false \

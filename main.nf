@@ -71,7 +71,9 @@ process crams_to_fastqs {
   '''
 }
 
-process run_starsolo {
+process tenx_starsolo {
+
+  label 'starsolo'
 
   publishDir "${params.outdir}", mode: 'copy'
 
@@ -92,6 +94,31 @@ process run_starsolo {
   '''
 }
 
+process smartseq_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  path(samplefile)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  samplename=`basename !{samplefile}`
+  sample=${samplename%.*}
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} "true"
+  else
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} "false"
+  fi
+  !{projectDir}/bin/solo_QC.sh ${sample} | column -t > "${sample}/qc_results.txt"
+  '''
+}
+
 workflow irods {
   take: sample
   main:
@@ -107,10 +134,15 @@ workflow tenx {
     ch_sample = ch_sample_list | flatMap{ it.readLines() } 
     if (params.local) {
       ch_local = Channel.from( params.local )
-      ch_sample | combine( ch_local ) | run_starsolo
+      ch_sample | combine( ch_local ) | tenx_starsolo
     }
     else {
       irods(ch_sample)
-      run_starsolo(irods.out)
+      tenx_starsolo(irods.out)
     }
+}
+
+workflow smartseq {
+  main:
+    smartseq_starsolo(params.samplefile)  
 }

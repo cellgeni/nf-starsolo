@@ -1,0 +1,10 @@
+/path/to/fastqs/121s_A18.fastq	-	SRR12892899
+/path/to/fastqs/121s_A1.fastq	-	SRR12892893
+/path/to/fastqs/121s_A24.fastq	-	SRR12892467
+/path/to/fastqs/121s_A4.fastq	-	SRR12893003
+/path/to/fastqs/121s_B4.fastq	-	SRR12892730
+/path/to/fastqs/121s_C12.fastq	-	SRR12892792
+/path/to/fastqs/121s_C15.fastq	-	SRR12892690
+/path/to/fastqs/121s_C18.fastq	-	SRR12892965
+/path/to/fastqs/121s_C19.fastq	-	SRR12892931
+/path/to/fastqs/121s_C20.fastq	-	SRR12892572

@@ -35,7 +35,7 @@ fi
 mkdir $TAG && cd $TAG
 
 GZIP=""
-if [[ `grep "\.gz\t" $TSV` != "" ]]
+if [[ `grep -P "\.gz\t" $TSV` != "" ]]
 then  
   GZIP="--readFilesCommand zcat"
 fi

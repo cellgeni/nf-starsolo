@@ -119,6 +119,29 @@ process smartseq_starsolo {
   '''
 }
 
+process indrops_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "true"
+  else
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "false"
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
 workflow irods {
   take: sample
   main:
@@ -145,4 +168,18 @@ workflow tenx {
 workflow smartseq {
   main:
     smartseq_starsolo(params.samplefile)  
+}
+
+workflow indrops {
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | indrops_starsolo
+    }
+    else {
+      irods(ch_sample)
+      indrops_starsolo(irods.out)
+    }
 }

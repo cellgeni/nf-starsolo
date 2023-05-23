@@ -8,15 +8,9 @@ TAG=$1
 FQDIR=$2
 REF=$3
 KEEP_BAMS=$4
+CPUS=$5
 
-if [[ $FQDIR == "" || $TAG == "" ]]
-then
-  >&2 echo "Usage: ./starsolo_10x_auto.sh <fastq_dir> <sample_id>"
-  >&2 echo "(make sure you set the correct REF, WL, and BAM variables below)"
-  exit 1
-fi
-
-CPUS=16
+FQDIR=`readlink -f $FQDIR`
 WL=/nfs/cellgeni/STAR/whitelists
 
 ## choose one of the two otions, depending on whether you need a BAM file 

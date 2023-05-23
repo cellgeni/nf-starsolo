@@ -11,15 +11,9 @@ TSV=$1
 TAG=$2
 REF=$3
 KEEP_BAMS=$4
-
-if [[ ! -s $TSV ]]
-then 
-  >&2 echo "Usage: ./starsolo_ss2.sh <manifest_tsv>"
-  exit 1
-fi
+CPUS=$5                                                                ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
 
 TSV=`readlink -f $TSV` 
-CPUS=16                                                                ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
 
 ## choose one of the two otions, depending on whether you need a BAM file 
 ## BAM options are for 10x and not tested with other methods

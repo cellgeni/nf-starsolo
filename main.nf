@@ -86,9 +86,9 @@ process tenx_starsolo {
   shell:
   '''
   if [[ !{params.keep_bams} = true ]]; then
-    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "true"
+    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
   else
-    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false"
+    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
   fi
   !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''
@@ -111,9 +111,9 @@ process smartseq_starsolo {
   samplename=`basename !{samplefile}`
   sample=${samplename%.*}
   if [[ !{params.keep_bams} = true ]]; then
-    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "true"
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "true" !{task.cpus}
   else
-    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "false"
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "false" !{task.cpus}
   fi
   !{projectDir}/bin/solo_QC.sh ${sample} | column -t > "${sample}/qc_results.txt"
   '''
@@ -134,21 +134,12 @@ process indrops_starsolo {
   shell:
   '''
   if [[ !{params.keep_bams} = true ]]; then
-    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "true"
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
   else
-    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "false"
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
   fi
   !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''
-}
-
-workflow irods {
-  take: sample
-  main:
-    get_starsolo(sample)
-    crams_to_fastqs(get_starsolo.out.sample_crams)
-  emit:
-    crams_to_fastqs.out
 }
 
 workflow tenx {

@@ -8,17 +8,9 @@ TAG=$1
 FQDIR=$2
 REF=$3
 KEEP_BAMS=$4
-
-if [[ $FQDIR == "" || $TAG == "" ]]
-then
-  >&2 echo "Usage: ./starsolo_indrops.sh <fastq_dir> <sample_id>"
-  >&2 echo "(make sure you set the correct REF, WL, ADAPTER, BC1/BC2, and BAM variables below)"
-  exit 1
-fi
+CPUS=$5                                                               ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
 
 FQDIR=`readlink -f $FQDIR`
-CPUS=16                                                                ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
-REF=/nfs/cellgeni/STAR/human/2020A/index                               ## choose the appropriate reference 
 WL=/nfs/cellgeni/STAR/whitelists                                       ## directory with all barcode whitelists
 
 ADAPTER=GAGTGATTGCTTGTGACGCCTT                                         ## these could be GAGTGATTGCTTGTGACGCCTT or GAGTGATTGCTTGTGACGCCAA 

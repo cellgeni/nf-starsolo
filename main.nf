@@ -104,7 +104,7 @@ process smartseq_starsolo {
   path(samplefile)
 
   output:
-  path(sample)
+  path('*')
 
   shell:
   '''

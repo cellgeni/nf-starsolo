@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -euo pipefail
+
+samplefile=/path/to/samples.txt
+config=/path/to/nextflow.config
+
+[[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
+
+#If fastqs are in a local file then additional argument:
+#--local /path/to/fastq/dir \
+
+nextflow run cellgeni/nf-starsolo \
+  -entry indrops \
+  --samplefile $samplefile \
+  -c $config \
+  -w starsolo-work \
+  --ansi-log false \
+  -resume

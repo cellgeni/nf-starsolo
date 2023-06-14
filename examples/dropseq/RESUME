@@ -3,7 +3,6 @@
 set -euo pipefail
 
 samplefile=/path/to/samples.txt
-config=/path/to/nextflow.config
 
 [[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
 
@@ -13,7 +12,5 @@ config=/path/to/nextflow.config
 nextflow run cellgeni/nf-starsolo \
   -entry dropseq \
   --samplefile $samplefile \
-  -c $config \
-  -w starsolo-work \
   --ansi-log false \
   -resume

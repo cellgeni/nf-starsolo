@@ -165,6 +165,29 @@ process dropseq_starsolo {
   '''
 }
 
+process strtseq_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_strt.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_strt.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
 workflow irods {
   take: sample
   main:
@@ -218,5 +241,20 @@ workflow dropseq {
     else {
       irods(ch_sample)
       dropseq_starsolo(irods.out)
+    }
+}
+
+workflow strtseq {
+  
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | strtseq_starsolo
+    }
+    else {
+      irods(ch_sample)
+      strtseq_starsolo(irods.out)
     }
 }

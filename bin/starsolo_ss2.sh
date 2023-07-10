@@ -36,7 +36,7 @@ fi
 
 ## outFilter* options can be adjusted according to the mapping rate and mapped length
 ## alignment often works well without clipping; if not, --clip3pAdapterSeq <3' adapter sequence> option can be added, or separate trimming using bbduk.sh works well too
-STAR --runThreadN $CPUS --genomeDir $REF --runDirPerm All_RWX $GZIP $BAM \
+STAR --runThreadN $CPUS --genomeDir $REF --runDirPerm All_RWX $GZIP $BAM --limitOutSJcollapsed 10000000 --soloCellFilter None \
      --soloType SmartSeq --readFilesManifest $TSV --soloUMIdedup Exact --soloStrand Unstranded \
      --soloFeatures Gene GeneFull --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx
 
@@ -47,7 +47,7 @@ then
 fi
 
 cd output
-for i in Gene/raw Gene/filtered GeneFull/raw GeneFull/filtered
+for i in Gene/raw GeneFull/raw
 do 
   cd $i; for j in *; do gzip $j & done
   cd ../../

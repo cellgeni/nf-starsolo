@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+
+samplefile=/path/to/manifest.txt
+
+[[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
+
+nextflow run cellgeni/nf-starsolo \
+  -entry smartseq \
+  --samplefile $samplefile \
+  --ansi-log false \
+  -resume

@@ -8,13 +8,17 @@ def helpMessage() {
     starsolo pipeline
     =================
     This pipeline runs STARsolo.
-    The only parameter you need to input is:
-      --SAMPLEFILE /full/path/to/sample/file
-    This file should contain a single sampleID per line. 
-    An example can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
+    There are 2 required parameters:
+      --samplefile /full/path/to/sample/file
+      -entry starsolo-mode
+    The samplefile should contain a single sampleID per line. 
+    An example samplefile can be seen here: https://github.com/cellgeni/nf-starsolo/blob/main/examples/example.txt
+    The currently available STARsolo modes are: tenx
+    There are 2 optional parameters you can change.
+      --reference /full/path/to/reference    
+      --local /full/path/to/fastq/directory
     The default reference genome is: GRCh38 2020A
-    To change these defaults input:
-      --reference /path/to/reference    
+    The local mode allows you to provide a full path to a directory containing fastqs rather than using IRODs.
     """.stripIndent()
 }
 
@@ -23,9 +27,9 @@ def errorMessage() {
     ==============
     starsolo error
     ==============
-    You failed to provide the SAMPLEFILE input parameter
+    You failed to provide the samplefile input parameter
     Please provide these parameters as follows:
-      --SAMPLEFILE /full/path/to/sample/file
+      --samplefile /full/path/to/sample/file
     The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1
@@ -67,7 +71,9 @@ process crams_to_fastqs {
   '''
 }
 
-process run_starsolo {
+process tenx_starsolo {
+
+  label 'starsolo'
 
   publishDir "${params.outdir}", mode: 'copy'
 
@@ -80,23 +86,175 @@ process run_starsolo {
   shell:
   '''
   if [[ !{params.keep_bams} = true ]]; then
-    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "true"
+    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
   else
-    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false"
+    !{projectDir}/bin/starsolo_10x_auto.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
   fi
   !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
   '''
 }
 
-workflow {
-  if (params.HELP) {
-    helpMessage()
-    exit 0
-  }
-  else {
-    ch_sample_list = params.SAMPLEFILE != null ? Channel.fromPath(params.SAMPLEFILE) : errorMessage()
-    ch_sample_list | flatMap{ it.readLines() } | get_starsolo 
+process smartseq_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  path(samplefile)
+
+  output:
+  path('*')
+
+  shell:
+  '''
+  samplename=`basename !{samplefile}`
+  sample=${samplename%.*}
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_ss2.sh !{samplefile} ${sample} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh ${sample} | column -t > "${sample}/qc_results.txt"
+  '''
+}
+
+process indrops_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_indrops.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
+process dropseq_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+  
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_dropseq.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_dropseq.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
+process strtseq_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_strt.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_strt.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
+workflow irods {
+  take: sample
+  main:
+    get_starsolo(sample)
     crams_to_fastqs(get_starsolo.out.sample_crams)
-    run_starsolo(crams_to_fastqs.out.sample_fastqdir)
-  }
+  emit:
+    crams_to_fastqs.out
+}
+
+workflow tenx {
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() } 
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | tenx_starsolo
+    }
+    else {
+      irods(ch_sample)
+      tenx_starsolo(irods.out)
+    }
+}
+
+workflow smartseq {
+  main:
+    smartseq_starsolo(params.samplefile)  
+}
+
+workflow indrops {
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | indrops_starsolo
+    }
+    else {
+      irods(ch_sample)
+      indrops_starsolo(irods.out)
+    }
+}
+
+workflow dropseq {
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | dropseq_starsolo
+    }
+    else {
+      irods(ch_sample)
+      dropseq_starsolo(irods.out)
+    }
+}
+
+workflow strtseq {
+  
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | strtseq_starsolo
+    }
+    else {
+      irods(ch_sample)
+      strtseq_starsolo(irods.out)
+    }
 }

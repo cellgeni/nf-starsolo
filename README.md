@@ -27,4 +27,4 @@ There are two branches:
 * `--outdir` - The path to where the results will be saved.
 * `--reference` - Tells pipeline which genome to use for alignment (by default GRCh38 2020A is used). This default argument is hardcoded and needs to be changed to your local path to the reference index file. 
 * `--keep_bams` - Tells the pipeline whether to generate BAM files (default false means do not generate).
-* `--local` - Tells the pipeline whether to download data from irods or the locally (default null means look on irods).
+* `--local` - Path to local directory containing the fastqs (default null means look on irods).

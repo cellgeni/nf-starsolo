@@ -2,6 +2,8 @@
 
 nextflow.enable.dsl=2
 
+include { irods as IRODS } from './workflows/irods' params(params)
+
 def helpMessage() {
     log.info"""
     =================
@@ -33,42 +35,6 @@ def errorMessage() {
     The pipeline has exited with error status 1.
     """.stripIndent()
     exit 1
-}
-
-process get_starsolo {
-
-  input:
-  val(sample)
-
-  output:
-  //outputs multiple objects: sample name (generated in the process shell so needs env) and a list of all files generated in processing
-  tuple val(sample), path('*.cram'), emit: sample_crams  
-
-  shell:
-  '''
-  myrods.sh -s !{sample} -q off
-  '''
-}
-
-process crams_to_fastqs {
-
-  input:
-  tuple val(sample), path(cram)
-
-  output:
-  tuple val(sample), env(fastq_dir), emit: sample_fastqdir 
-  
-  shell:
-  '''
-  fastq_dir="!{launchDir}/!{params.outdir}/fastqs"
-  mkdir -p $fastq_dir
-  for cr in !{cram}; do
-    !{baseDir}/bin/cram2fastq_10x.sh ${cr}
-  done
-  for fq in *.fastq.gz; do
-    mv $fq "${fastq_dir}/!{sample}_${fq}"
-  done
-  '''
 }
 
 process tenx_starsolo {
@@ -188,15 +154,6 @@ process strtseq_starsolo {
   '''
 }
 
-workflow irods {
-  take: sample
-  main:
-    get_starsolo(sample)
-    crams_to_fastqs(get_starsolo.out.sample_crams)
-  emit:
-    crams_to_fastqs.out
-}
-
 workflow tenx {
   main:
     ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
@@ -206,8 +163,8 @@ workflow tenx {
       ch_sample | combine( ch_local ) | tenx_starsolo
     }
     else {
-      irods(ch_sample)
-      tenx_starsolo(irods.out)
+      IRODS(ch_sample)
+      tenx_starsolo(IRODS.out.fastqs)
     }
 }
 
@@ -225,8 +182,8 @@ workflow indrops {
       ch_sample | combine( ch_local ) | indrops_starsolo
     }
     else {
-      irods(ch_sample)
-      indrops_starsolo(irods.out)
+      IRODS(ch_sample)
+      indrops_starsolo(IRODS.out.fastqs)
     }
 }
 
@@ -239,8 +196,8 @@ workflow dropseq {
       ch_sample | combine( ch_local ) | dropseq_starsolo
     }
     else {
-      irods(ch_sample)
-      dropseq_starsolo(irods.out)
+      IRODS(ch_sample)
+      dropseq_starsolo(IRODS.out.fastqs)
     }
 }
 
@@ -254,7 +211,7 @@ workflow strtseq {
       ch_sample | combine( ch_local ) | strtseq_starsolo
     }
     else {
-      irods(ch_sample)
-      strtseq_starsolo(irods.out)
+      IRODS(ch_sample)
+      strtseq_starsolo(IRODS.out.fastqs)
     }
 }

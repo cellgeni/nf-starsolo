@@ -28,4 +28,4 @@ There are two branches:
 * `--reference` - Tells pipeline which genome to use for alignment (by default GRCh38 2020A is used). This default argument is hardcoded and needs to be changed to your local path to the reference index file. 
 * `--keep_bams` - Tells the pipeline whether to generate BAM files (default false means do not generate).
 * `--local` - Path to local directory containing the fastqs (default null means look on irods).
-* `--index_format` - The index format of the fastq files (defailt i*i means both index1 and index2 file)
+* `--index_format` - The index format of the fastq files (defailt i*i means both index1 and index2 file).

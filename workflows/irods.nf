@@ -1,7 +1,6 @@
 nextflow.enable.dsl=2
 
 //Written by Krzyzstof Polanski, Martin Prete
-params.index_format = "i*i*"
 
 // Logic based on mapcloud CRAM downloader/converter
 // https://github.com/Teichlab/mapcloud/tree/58b1d7163de7b0b2b8880fad19d722b586fc32b9/scripts/10x/utils

@@ -22,7 +22,7 @@ fi
 
 ###################################################################### DONT CHANGE OPTIONS BELOW THIS LINE ##############################################################################################
 
-mkdir $TAG && cd $TAG
+rm -rf $TAG && mkdir $TAG && cd $TAG
 
 ## three popular cases: <sample>_1.fastq/<sample>_2.fastq, <sample>.R1.fastq/<sample>.R2.fastq, and <sample>_L001_R1_S001.fastq/<sample>_L001_R2_S001.fastq
 ## the command below will generate a comma-separated list for each read

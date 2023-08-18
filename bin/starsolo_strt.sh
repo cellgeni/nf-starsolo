@@ -27,7 +27,8 @@ fi
 
 BC=$WL/96_barcodes.list
 
-mkdir $TAG && cd $TAG
+rm -rf $TAG && mkdir $TAG && cd $TAG
+
 ## for multiple fastq files; change grep options according to your fastq file format 
 R1=""
 R2=""

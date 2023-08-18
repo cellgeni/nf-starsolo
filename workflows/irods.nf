@@ -107,7 +107,7 @@ process cramToFastq {
     input:
         tuple val(sample), path(cram), val(i1), val(i2), val(r1), val(r2)
     output:
-        tuple val(sample), env(fastq_dir)
+        tuple val(sample), path(fastq_dir)
     shell:
         '''
         scount=`basename !{cram} .cram | cut -f 2 -d "#"`

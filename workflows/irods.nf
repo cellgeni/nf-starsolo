@@ -107,7 +107,7 @@ process cramToFastq {
     input:
         tuple val(sample), path(cram), val(i1), val(i2), val(r1), val(r2)
     output:
-        tuple val(sample), path(fastq_dir)
+        tuple val(sample), path("fastqs")
     shell:
         '''
         scount=`basename !{cram} .cram | cut -f 2 -d "#"`
@@ -127,10 +127,9 @@ process cramToFastq {
             samtools view -b !{cram} | bamcollate2 collate=1 reset=1 resetaux=0 auxfilter=RG,BC,QT | samtools fastq -1 !{sample}_S\$scount\\_L00\$lcount\\_!{r1}_001.fastq.gz -2 !{sample}_S\$scount\\_L00\$lcount\\_!{r2}_001.fastq.gz --i1 !{sample}_S\$scount\\_L00\$lcount\\_!{i1}_001.fastq.gz --i2 !{sample}_S\$scount\\_L00\$lcount\\_!{i2}_001.fastq.gz --index-format \$ISTRING -n -
         fi
         find . -type f -name "*.fastq.gz" -size -50c -exec rm {} \\;
-        fastq_dir="!{params.outdir}/fastqs"
-        mkdir -p $fastq_dir
+        mkdir -p "fastqs"
         for fq in *.fastq.gz; do
-          mv $fq "${fastq_dir}/!{sample}_${fq}"
+          mv $fq "fastqs/!{sample}_${fq}"
         done
         '''
 }

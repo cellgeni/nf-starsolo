@@ -127,7 +127,7 @@ process cramToFastq {
             samtools view -b !{cram} | bamcollate2 collate=1 reset=1 resetaux=0 auxfilter=RG,BC,QT | samtools fastq -1 !{sample}_S\$scount\\_L00\$lcount\\_!{r1}_001.fastq.gz -2 !{sample}_S\$scount\\_L00\$lcount\\_!{r2}_001.fastq.gz --i1 !{sample}_S\$scount\\_L00\$lcount\\_!{i1}_001.fastq.gz --i2 !{sample}_S\$scount\\_L00\$lcount\\_!{i2}_001.fastq.gz --index-format \$ISTRING -n -
         fi
         find . -type f -name "*.fastq.gz" -size -50c -exec rm {} \\;
-        fastq_dir="!{launchDir}/!{params.outdir}/fastqs"
+        fastq_dir="!{params.outdir}/fastqs"
         mkdir -p $fastq_dir
         for fq in *.fastq.gz; do
           mv $fq "${fastq_dir}/!{sample}_${fq}"

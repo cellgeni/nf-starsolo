@@ -10,13 +10,23 @@ REF=$3
 KEEP_BAMS=$4
 CPUS=$5
 
+if [[ $FQDIR == "" || $TAG == "" ]]
+then
+  >&2 echo "Usage: ./starsolo_bd_rhapsody.sh <fastq_dir> <sample_id>"
+  >&2 echo "(make sure you set the correct REF, WL, ADAPTER, BC1/BC2, and BAM variables below)"
+  exit 1
+fi
+
 FQDIR=`readlink -f $FQDIR`
-WL=/nfs/cellgeni/STAR/whitelists
+CPUS=16                                                                ## typically bsub this into normal queue with 16 cores and 64 Gb RAM.   
+REF=/nfs/cellgeni/STAR/human/2020A/index                               ## choose the appropriate reference 
+WL=/nfs/cellgeni/STAR/whitelists                                       ## directory with all barcode whitelists
 
-CBLEN=8
-UMILEN=8
+BC1=$WL/Rhapsody_bc1.txt
+BC2=$WL/Rhapsody_bc2.txt
+BC3=$WL/Rhapsody_bc3.txt
 
-## choose one of the two otions, depending on whether you need a BAM file 
+## choose one of the two options, depending on whether you need a BAM file 
 if [[ "$KEEP_BAMS" = true ]]; then
   BAM="--outSAMtype BAM SortedByCoordinate --outBAMsortingBinsN 500 --limitBAMsortRAM 60000000000 --outMultimapperOrder Random --runRNGseed 1 --outSAMattributes NH HI AS nM CB UB CR CY UR UY GX GN"
 else
@@ -25,9 +35,7 @@ fi
 
 ###################################################################### DONT CHANGE OPTIONS BELOW THIS LINE ##############################################################################################
 
-BC=$WL/96_barcodes.list
-
-rm -rf $TAG && mkdir $TAG && cd $TAG
+mkdir $TAG && cd $TAG
 
 ## three popular cases: <sample>_1.fastq/<sample>_2.fastq, <sample>.R1.fastq/<sample>.R2.fastq, and <sample>_L001_R1_S001.fastq/<sample>_L001_R2_S001.fastq
 ## the command below will generate a comma-separated list for each read
@@ -50,30 +58,27 @@ else
   exit 1
 fi
 
+## let's see if the files are archived or not. Gzip is the only one we test for, but bgzip archives should work too since they are gzip-compatible.
 GZIP=""
-## see if the original fastq files are archived: 
 if [[ `find $FQDIR/* | grep $TAG | grep "\.gz$"` != "" ]]
-then
+then  
   GZIP="--readFilesCommand zcat"
 fi
 
-STRAND="Forward"
-CBLEN=8
-UMILEN=8
-
-STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn $R2 $R1 --runDirPerm All_RWX $GZIP $BAM \
-     --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN \
-     --soloUMIstart $((CBLEN+1)) --soloUMIlen $UMILEN --soloStrand $STRAND --soloUMIdedup 1MM_CR \
-     --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR --soloCellFilter None \
+## increased soloAdapterMismatchesNmax to 3, as per discussions in STAR issues
+STAR  --runThreadN $CPUS --genomeDir $REF --readFilesIn $R2 $R1 --runDirPerm All_RWX $GZIP $BAM \
+     --soloType CB_UMI_Complex --soloCBwhitelist $BC1 $BC2 $BC3 --soloUMIlen 8 \
+     --soloCBmatchWLtype 1MM --soloCBposition 0_0_0_8 0_21_0_29 0_43_0_51 --soloUMIposition 0_52_0_59 \
      --soloFeatures Gene GeneFull --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --outReadsUnmapped Fastx
 
 ## max-CR bzip all unmapped reads with multicore pbzip2 
 pbzip2 -9 Unmapped.out.mate1 &
 pbzip2 -9 Unmapped.out.mate2 &
+wait
 
-## gzip all outputs
+## finally, let's gzip all outputs
 cd output
-for i in Gene/raw GeneFull/raw
+for i in Gene/raw Gene/filtered GeneFull/raw GeneFull/filtered
 do 
   cd $i; for j in *; do gzip $j & done
   cd ../../
@@ -82,8 +87,8 @@ done
 ## index the BAM file
 if [[ -s Aligned.sortedByCoord.out.bam ]]
 then
-  samtools index -@16 Aligned.sortedByCoord.out.bam
+  $CMD samtools index -@16 Aligned.sortedByCoord.out.bam &
 fi
 
-wait
+
 echo "ALL DONE!"

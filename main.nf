@@ -154,6 +154,29 @@ process strtseq_starsolo {
   '''
 }
 
+process rhapsody_starsolo {
+
+  label 'starsolo'
+
+  publishDir "${params.outdir}", mode: 'copy'
+
+  input:
+  tuple val(sample), val(fastq_dir)
+
+  output:
+  path(sample)
+
+  shell:
+  '''
+  if [[ !{params.keep_bams} = true ]]; then
+    !{projectDir}/bin/starsolo_bd_rhapsody.sh !{sample} !{fastq_dir} !{params.reference} "true" !{task.cpus}
+  else
+    !{projectDir}/bin/starsolo_bd_rhapsody.sh !{sample} !{fastq_dir} !{params.reference} "false" !{task.cpus}
+  fi
+  !{projectDir}/bin/solo_QC.sh !{sample} | column -t > "!{sample}/qc_results.txt"
+  '''
+}
+
 workflow tenx {
   main:
     ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
@@ -213,5 +236,20 @@ workflow strtseq {
     else {
       IRODS(ch_sample)
       strtseq_starsolo(IRODS.out.fastqs)
+    }
+}
+
+workflow rhapsody {
+  
+  main:
+    ch_sample_list = params.samplefile != null ? Channel.fromPath(params.samplefile) : errorMessage()
+    ch_sample = ch_sample_list | flatMap{ it.readLines() }
+    if (params.local) {
+      ch_local = Channel.from( params.local )
+      ch_sample | combine( ch_local ) | rhapsody_starsolo
+    }
+    else {
+      IRODS(ch_sample)
+      rhapsody_starsolo(IRODS.out.fastqs)
     }
 }

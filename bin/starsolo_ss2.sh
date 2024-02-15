@@ -38,13 +38,17 @@ fi
 ## alignment often works well without clipping; if not, --clip3pAdapterSeq <3' adapter sequence> option can be added, or separate trimming using bbduk.sh works well too
 STAR --runThreadN $CPUS --genomeDir $REF --runDirPerm All_RWX $GZIP $BAM --limitOutSJcollapsed 10000000 --soloCellFilter None \
      --soloType SmartSeq --readFilesManifest $TSV --soloUMIdedup Exact --soloStrand Unstranded \
-     --soloFeatures Gene GeneFull --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx
+     --soloFeatures Gene GeneFull --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --outReadsUnmapped Fastx
 
 ## index the BAM file
 if [[ -s Aligned.sortedByCoord.out.bam ]]
 then
   samtools index -@16 Aligned.sortedByCoord.out.bam
 fi
+
+## max-CR bzip all unmapped reads with multicore pbzip2 
+pbzip2 -9 Unmapped.out.mate1 &
+pbzip2 -9 Unmapped.out.mate2 &
 
 cd output
 for i in Gene/raw GeneFull/raw

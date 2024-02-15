@@ -1,6 +1,6 @@
 #!/bin/bash -e 
 
-## v3.1 of STARsolo wrappers is set up to guess the chemistry automatically
+## v3.2 of STARsolo wrappers is set up to guess the chemistry automatically
 ## newest version of the script uses STAR v2.7.10a with EM multimapper processing 
 ## in STARsolo which on by default; the extra matrix can be found in /raw subdir 
 
@@ -28,28 +28,25 @@ rm -rf $TAG && mkdir $TAG && cd $TAG
 ## the command below will generate a comma-separated list for each read
 R1=""
 R2=""
-if [[ `find $FQDIR/* | grep $TAG | grep "_1\.fastq"` != "" ]]
+if [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_1\.f.*q"` != "" ]]
 then 
-  R1=`find $FQDIR/* | grep $TAG | grep "_1\.fastq" | sort | tr '\n' ',' | sed "s/,$//g"`
-  R2=`find $FQDIR/* | grep $TAG | grep "_2\.fastq" | sort | tr '\n' ',' | sed "s/,$//g"`
-elif [[ `find $FQDIR/* | grep $TAG | grep "R1\.fastq"` != "" ]]
+  R1=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_1\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+  R2=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_2\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+elif [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "R1\.f.*q"` != "" ]]
 then
-  R1=`find $FQDIR/* | grep $TAG | grep "R1\.fastq" | sort | tr '\n' ',' | sed "s/,$//g"`
-  R2=`find $FQDIR/* | grep $TAG | grep "R2\.fastq" | sort | tr '\n' ',' | sed "s/,$//g"`
-elif [[ `find $FQDIR/* | grep $TAG | grep "_R1_.*\.fastq"` != "" ]]
+  R1=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "R1\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+  R2=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "R2\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+elif [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R1_.*\.f.*q"` != "" ]]
 then
-  R1=`find $FQDIR/* | grep $TAG | grep "_R1_" | sort | tr '\n' ',' | sed "s/,$//g"`
-  R2=`find $FQDIR/* | grep $TAG | grep "_R2_" | sort | tr '\n' ',' | sed "s/,$//g"`
+  R1=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R1_.*\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+  R2=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R2_.*\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
 else 
   >&2 echo "ERROR: No appropriate fastq files were found! Please check file formatting, and check if you have set the right FQDIR."
   exit 1
 fi 
 
-## also define one file from R1/R2; we choose the largest one, because sometimes there are tiny files from trial runs
-R1F=`echo $R1 | tr ',' ' ' | xargs ls -s | tail -n1 | awk '{print $2}'`
-R2F=`echo $R2 | tr ',' ' ' | xargs ls -s | tail -n1 | awk '{print $2}'`
-
-## let's see if the files are archived or not. Gzip is the most common, but bgzip archives should work too since they are gzip-compatible.
+## define some key variables, in order to evaluate reads for being 1) gzipped/bzipped/un-archived; 
+## 2) having barcodes from the whitelist, and which; 3) having consistent length; 4) being single- or paired-end. 
 GZIP=""
 BC=""
 NBC1=""
@@ -59,18 +56,40 @@ NBCA=""
 R1LEN=""
 R2LEN=""
 R1DIS=""
-
-
-## randomly subsample 200k reads - let's hope there are at least this many (there should be):
-seqtk sample -s100 $R1F 200000 > test.R1.fastq &
-seqtk sample -s100 $R2F 200000 > test.R2.fastq &
-wait
+ZCMD="cat"
 
 ## see if the original fastq files are archived: 
-if [[ `find $FQDIR/* | grep $TAG | grep "\.gz$"` != "" ]]
+if [[ `find $FQDIR/* | grep -P "$TAG[\/\._]" | grep "\.gz$"` != "" ]]
 then  
   GZIP="--readFilesCommand zcat"
+  ZCMD="zcat"
+elif [[ `find $FQDIR/* | grep -P "$TAG[\/\._]" | grep "\.bz2$"` != "" ]]
+then
+  GZIP="--readFilesCommand bzcat"
+  ZCMD="bzcat"
 fi
+
+## we need a small and random selection of reads. the solution below is a result of much trial and error.
+## in the end, we select 200k reads that represent all of the files present in the FASTQ dir for this sample.
+for i in `echo $R1 | tr ',' ' '`
+do
+  j=`basename $i`
+  $ZCMD $i | head -4000000 > $j.R1_head &
+done
+wait 
+
+for i in `echo $R2 | tr ',' ' ' `                                                
+do 
+  j=`basename $i`
+  $ZCMD $i | head -4000000 > $j.R2_head &      
+done
+wait
+
+## same random seed makes sure you select same reads from R1 and R2
+cat *.R1_head | $CMD seqtk sample -s100 - 200000 > test.R1.fastq &
+cat *.R2_head | $CMD seqtk sample -s100 - 200000 > test.R2.fastq &
+wait 
+rm *.R1_head *.R2_head
 
 NBC1=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-april-2014_rc.txt | wc -l`
 NBC2=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-august-2016.txt | wc -l`
@@ -81,17 +100,17 @@ R2LEN=`cat test.R2.fastq | awk 'NR%4==2' | awk '{sum+=length($0)} END {printf "%
 R1DIS=`cat test.R1.fastq | awk 'NR%4==2' | awk '{print length($0)}' | sort | uniq -c | wc -l`
 
 ## elucidate the right barcode whitelist to use. Grepping out N saves us some trouble. Note the special list for multiome experiments (737K-arc-v1.txt):
-## 80k (out of 200,000) is an empirical number - I've seen <50% barcodes matched to the whitelist, but a number that's < 40% suggests something is very wrong
-if (( $NBC3 > 80000 )) 
+## 50k (out of 200,000) is a modified empirical number - matching only first 14-16 nt makes this more specific
+if (( $NBC3 > 50000 )) 
 then 
   BC=$WL/3M-february-2018.txt
-elif (( $NBC2 > 80000 ))
+elif (( $NBC2 > 50000 ))
 then
   BC=$WL/737K-august-2016.txt
-elif (( $NBCA > 80000 ))
+elif (( $NBCA > 50000 ))
 then
   BC=$WL/737K-arc-v1.txt
-elif (( $NBC1 > 80000 )) 
+elif (( $NBC1 > 50000 )) 
 then
   BC=$WL/737K-april-2014_rc.txt
 else 
@@ -139,7 +158,24 @@ then
   UMILEN=10
 fi 
 
-## finally, see if you have 5' or 3' experiment. I don't know and easier way than to run a test alignment:  
+## yet another failsafe! Some geniuses managed to sequence v3 10x with a 26bp R1, which also causes STARsolo grief. This fixes it.
+if (( $CBLEN + $UMILEN > $R1LEN ))
+then
+  NEWUMI=$((R1LEN-CBLEN))
+  BCUMI=$((UMILEN+CBLEN))
+  >&2 echo "WARNING: Read 1 length ($R1LEN) is less than the sum of appropriate barcode and UMI ($BCUMI). Changing UMI setting from $UMILEN to $NEWUMI!"
+  UMILEN=$NEWUMI
+elif (( $CBLEN + $UMILEN < $R1LEN ))
+then
+  BCUMI=$((UMILEN+CBLEN))
+  >&2 echo "WARNING: Read 1 length ($R1LEN) is more than the sum of appropriate barcode and UMI ($BCUMI)."
+fi
+
+## it's hard to come up with a universal rule to correctly infer strand-specificity of the experiment. 
+## this is the best I could come up with: 1) check if fraction of test reads (200k random ones) maps to GeneFull forward strand 
+## with higher than 50% probability; 2) if not, run the same quantification with "--soloStand Reverse" and calculate the same stat; 
+## 3) output a warning, and choose the strand with higher %; 4) if both percentages are below 10, 
+
 STRAND=Forward
 
 STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fastq --runDirPerm All_RWX --outSAMtype None \
@@ -147,19 +183,28 @@ STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fas
      --soloUMIlen $UMILEN --soloStrand Forward \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
      --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
-     --soloFeatures Gene GeneFull --soloOutFileNames test_strand/ features.tsv barcodes.tsv matrix.mtx &> /dev/null 
+     --soloFeatures Gene GeneFull --soloOutFileNames test_forward/ features.tsv barcodes.tsv matrix.mtx &> /dev/null 
 
-## the following is needed in case of bad samples: when a low fraction of reads come from mRNA, experiment will look falsely reverse-stranded
-UNIQFRQ=`grep "Reads Mapped to Genome: Unique," test_strand/GeneFull/Summary.csv | awk -F "," '{print $2}'`
-GENEPCT=`grep "Reads Mapped to GeneFull: Unique GeneFull" test_strand/GeneFull/Summary.csv | awk -F "," -v v=$UNIQFRQ '{printf "%d\n",$2*100/v}'`
+STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fastq --runDirPerm All_RWX --outSAMtype None \
+     --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) \
+     --soloUMIlen $UMILEN --soloStrand Reverse \
+     --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
+     --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
+     --soloFeatures Gene GeneFull --soloOutFileNames test_reverse/ features.tsv barcodes.tsv matrix.mtx &> /dev/null
 
-## this percentage is very empirical, but was found to work in 99% of cases. 
-## any 10x 3' run with GENEPCT < 35%, and any 5' run with GENEPCT > 35% are 
-## *extremely* strange and need to be carefully evaluated
-if (( $GENEPCT < 35 )) 
+
+PCTFWD=`grep "Reads Mapped to GeneFull: Unique GeneFull" test_forward/GeneFull/Summary.csv | awk -F "," '{printf "%d\n",$2*100+0.5}'`
+PCTREV=`grep "Reads Mapped to GeneFull: Unique GeneFull" test_reverse/GeneFull/Summary.csv | awk -F "," '{printf "%d\n",$2*100+0.5}'`
+
+if (( $PCTREV >= $PCTFWD ))
 then
   STRAND=Reverse
 fi
+
+if (( $PCTREV < 50 && $PCTFWD < 50)) 
+then
+  >&2 echo "WARNING: Low percentage of reads mapping to GeneFull: forward = $PCTFWD , reverse = $PCTREV"
+fi 
 
 ## finally, if paired-end experiment turned out to be 3' (yes, they do exist!), process it as single-end: 
 if [[ $STRAND == "Forward" && $PAIRED == "True" ]]
@@ -171,7 +216,7 @@ echo "Done setting up the STARsolo run; here are final processing options:"
 echo "============================================================================="
 echo "Sample: $TAG"
 echo "Paired-end mode: $PAIRED"
-echo "Strand (Forward = 3', Reverse = 5'): $STRAND, %reads same strand as gene: $GENEPCT"
+echo "Strand (Forward = 3', Reverse = 5'): $STRAND, %reads mapped to GeneFull: forward = $PCTFWD , reverse = $PCTREV"
 echo "CB whitelist: $BC, matches out of 200,000: $NBC3 (v3), $NBC2 (v2), $NBC1 (v1), $NBCA (multiome) "
 echo "CB length: $CBLEN"
 echo "UMI length: $UMILEN"
@@ -204,12 +249,12 @@ then
   samtools index -@16 Aligned.sortedByCoord.out.bam
 fi
 
-## finally, let's gzip all outputs
-gzip Unmapped.out.mate1 &
-gzip Unmapped.out.mate2 &
+## max-CR bzip all unmapped reads with multicore pbzip2 
+pbzip2 -9 Unmapped.out.mate1 &
+pbzip2 -9 Unmapped.out.mate2 &
 
 ## remove test files 
-rm -rf test.R?.fastq test_strand
+rm -rf test.R?.fastq test_forward test_reverse
 
 cd output
 for i in Gene/raw Gene/filtered GeneFull/raw GeneFull/filtered Velocyto/raw Velocyto/filtered

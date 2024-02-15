@@ -1,10 +1,52 @@
 #!/bin/bash 
 
-echo -e "Sample\tRd_all\tRd_in_cells\tFrc_in_cells\tUMI_in_cells\tCells\tMed_nFeature\tGood_BC\tWL\tSpecies\tPaired\tStrand\tall_u+m\tall_u\texon_u+m\texon_u\tfull_u+m\tfull_u"
-
 sample=$1
 
-if [[ -d $sample && -d $sample/output ]]
+## check that STAR temporary dir is removed for all samples, and that archived unmapped reads are created
+>&2 echo "Checking that all STARsolo jobs went to completion .." 
+if [[ -d $sample && -d $sample/output && -s $sample/Log.final.out ]]
+then
+  if [[ -d $sample/_STARtmp ]]
+  then
+    >&2 echo "WARNING: Sample $sample did not run to completion: _STARtmp is still present!" 
+  fi 
+
+  if [[ ! -s $sample/Unmapped.out.mate1.bz2 || ! -s $sample/Unmapped.out.mate2.bz2 ]]
+  then
+    >&2 echo "WARNING: Unmapped reads (Unmapped.out.mate[1,2].bz2) not found for sample $sample!" 
+  fi 
+fi
+
+
+# change in the main.nf needed for this part
+
+# ## check if samples overlap - this is often a sign that something went quite wrong 
+# ## e.g. starsolo script has chosen wrong reads, or they were swapped during upload, or some lab mix-up
+# >&2 echo "Checking potential sample cross-contamination .." 
+
+# for j in *
+# do
+#   if [[ -d $sample/output && -s $sample/Log.final.out && -d $j/output && -s $j/Log.final.out && $sample != $j ]]
+#   then
+#     N1=`zcat $sample/output/Gene/filtered/barcodes.tsv.gz | wc -l`
+#     N2=`zcat $j/output/Gene/filtered/barcodes.tsv.gz | wc -l`
+#     MIN=`(( $N1 <= $N2 )) && echo $N1 || echo $N2`
+#     COMM=`comm -12 <(zcat $sample/output/Gene/filtered/barcodes.tsv.gz) <(zcat $j/output/Gene/filtered/barcodes.tsv.gz) | wc -l`
+#     PCT=`echo $COMM | awk -v v=$MIN '{printf "%d\n",100*$1/v+0.5}'`
+#     if (( $PCT >= 20 )) 
+#     then
+#       >&2 echo "WARNING: Samples $sample ($N1 barcodes) and $j ($N2 barcodes) have $COMM ($PCT%) common barcodes, which is higher than expected by chance! Please investigate .."
+#     fi 
+#   fi 
+# done
+
+
+## finally, calculate and output STARsolo stats 
+>&2 echo "Extracting STARsolo stats .." 
+>&2 echo 
+echo -e "Sample\tRd_all\tRd_in_cells\tFrc_in_cells\tUMI_in_cells\tCells\tMed_nFeature\tGood_BC\tWL\tSpecies\tPaired\tStrand\tall_u+m\tall_u\texon_u+m\texon_u\tfull_u+m\tfull_u"
+
+if [[ -d $sample && -d $sample/output && -s $sample/Log.final.out ]]
 then 
   PAIRED="Single"
   if [[ `grep "clip5pNbases 39 0" $sample/Log.out` != "" ]]
@@ -59,6 +101,12 @@ then
     ## only 5' experiments can be processed as paired-end; however, actual STAR command has "--soloStrand Forward"
     ## since read order for PE processing is R1 R2 (it's R2 R1 for regular single-end 10X)
     ST="Reverse"
+  fi
+  ## warn about odd mapping stats; should add few more
+  F2PCT=`echo $F2 | awk '{printf "%d\n",$1*100+0.5}'`
+  if (( $F2PCT <= 20 ))
+  then
+    >&2 echo "WARNING: Sample $sample : GeneFull percentage ($F2PCT) is too low! Please make sure the strand-specificity evaluation worked correctly."
   fi
   echo -e "$sample\t$R1\t$R2\t$CF\t$R3\t$C\t$GC\t$B\t$WL\t$REF\t$PAIRED\t$ST\t$G1\t$G2\t$E1\t$E2\t$F1\t$F2"
 fi

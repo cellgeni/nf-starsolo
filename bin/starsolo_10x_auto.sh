@@ -52,6 +52,7 @@ BC=""
 NBC1=""
 NBC2=""
 NBC3=""
+NBC4=""
 NBCA=""
 R1LEN=""
 R2LEN=""
@@ -97,6 +98,7 @@ rm *.R1_head *.R2_head
 NBC1=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-april-2014_rc.txt | wc -l`
 NBC2=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-august-2016.txt | wc -l`
 NBC3=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/3M-february-2018.txt | wc -l`
+NBC4=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/3M-3pgex-may-2023.txt | wc -l`
 NBCA=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-arc-v1.txt | wc -l`
 R1LEN=`cat test.R1.fastq | awk 'NR%4==2' | awk '{sum+=length($0)} END {printf "%d\n",sum/NR+0.5}'`
 R2LEN=`cat test.R2.fastq | awk 'NR%4==2' | awk '{sum+=length($0)} END {printf "%d\n",sum/NR+0.5}'`
@@ -116,8 +118,11 @@ then
 elif (( $NBC1 > 50000 )) 
 then
   BC=$WL/737K-april-2014_rc.txt
+elif (( $NBC4 > 50000 ))
+then
+  BC=$WL/3M-3pgex-may-2023.txt
 else 
-  >&2 echo "ERROR: No whitelist has matched a random selection of 200,000 barcodes! Match counts: $NBC1 (v1), $NBC2 (v2), $NBC3 (v3), $NBCA (multiome)."
+  >&2 echo "ERROR: No whitelist has matched a random selection of 200,000 barcodes! Match counts: $NBC1 (v1), $NBC2 (v2), $NBC3 (v3), $NBC4 (v4), $NBCA (multiome)."
   exit 1
 fi 
 
@@ -147,7 +152,7 @@ then
   PAIRED=True
 fi
 
-if [[ $BC == "$WL/3M-february-2018.txt" || $BC == "$WL/737K-arc-v1.txt" ]] 
+if [[ $BC == "$WL/3M-february-2018.txt" || $BC == "$WL/737K-arc-v1.txt" || $BC == "$WL/3M-3pgex-may-2023.txt" ]] 
 then 
   CBLEN=16
   UMILEN=12

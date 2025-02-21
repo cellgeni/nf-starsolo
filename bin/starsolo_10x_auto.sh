@@ -52,6 +52,7 @@ BC=""
 NBC1=""
 NBC2=""
 NBC3=""
+NBC3_2=""
 NBC4=""
 NBCA=""
 R1LEN=""
@@ -121,10 +122,10 @@ then
   BC=$WL/737K-april-2014_rc.txt
 elif (( $NBC4 > 50000 ))
 then
-  BC=$WL/3M-5pgex-jan-2023.txt
+  BC=$WL/3M-3pgex-may-2023.txt  
 elif (( $NBC3_2 > 50000 ))
 then
-  BC=$WL/3M-3pgex-may-2023.txt
+  BC=$WL/3M-5pgex-jan-2023.txt
 else 
   >&2 echo "ERROR: No whitelist has matched a random selection of 200,000 barcodes! Match counts: $NBC1 (v1), $NBC2 (v2), $NBC3 (v3), $NBC3_2 (5'v3), $NBC4 (v4), $NBCA (multiome)."
   exit 1

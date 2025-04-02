@@ -19,7 +19,7 @@ TSV=`readlink -f $TSV`
 ## BAM options are for 10x and not tested with other methods
 ## choose one of the two otions, depending on whether you need a BAM file 
 if [[ "$KEEP_BAMS" = true ]]; then
-  BAM="--outSAMtype BAM SortedByCoordinate --outBAMsortingBinsN 500 --limitBAMsortRAM 60000000000 --outMultimapperOrder Random --runRNGseed 1 --outSAMattributes NH HI AS nM GX GN"
+  BAM="--outSAMtype BAM SortedByCoordinate --outBAMsortingBinsN 500 --limitBAMsortRAM 60000000000 --outMultimapperOrder Random --runRNGseed 1 --outSAMattributes NH HI AS nM GX GN RG"
 else
   BAM="--outSAMtype None"
 fi

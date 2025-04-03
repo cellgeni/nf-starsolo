@@ -15,17 +15,19 @@ WL=/nfs/cellgeni/STAR/whitelists
 
 ## choose one of the two otions, depending on whether you need a BAM file 
 if [[ "$KEEP_BAMS" = true ]]; then
-  BAM="--outSAMtype BAM SortedByCoordinate --outBAMsortingBinsN 500 --limitBAMsortRAM 60000000000 --outMultimapperOrder Random --runRNGseed 1 --outSAMattributes NH HI AS nM CB UB CR CY UR UY GX GN"
+  BAM="--outSAMtype BAM SortedByCoordinate --outBAMsortingBinsN 500 --limitBAMsortRAM 60000000000 --outSAMunmapped Within --outMultimapperOrder Random --runRNGseed 1 --outSAMattributes NH HI AS nM CB UB CR CY UR UY GX GN"
 else
-  BAM="--outSAMtype None"
+  BAM="--outSAMtype None --outReadsUnmapped Fastx"
 fi
 
 ###################################################################### DONT CHANGE OPTIONS BELOW THIS LINE ##############################################################################################
 
 rm -rf $TAG && mkdir $TAG && cd $TAG
 
-## three popular cases: <sample>_1.fastq/<sample>_2.fastq, <sample>.R1.fastq/<sample>.R2.fastq, and <sample>_L001_R1_S001.fastq/<sample>_L001_R2_S001.fastq
-## the command below will generate a comma-separated list for each read
+## four popular cases: ENA - <sample>_1.fastq/<sample>_2.fastq, regular - <sample>.R1.fastq/<sample>.R2.fastq
+## Cell Ranger - <sample>_L001_R1_S001.fastq/<sample>_L001_R2_S001.fastq, and HRA - <sample>_f1.fastq/<sample>_r2.fastq
+## the command below will generate a comma-separated list for each read if there are >1 file for each mate
+## archives (gzip/bzip2) are considered below; both .fastq and .fq should work, too. 
 R1=""
 R2=""
 if [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_1\.f.*q"` != "" ]]
@@ -40,6 +42,10 @@ elif [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R1_.*\.f.*q"` != "" ]]
 then
   R1=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R1_.*\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
   R2=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_R2_.*\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+elif [[ `find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_f1\.f.*q"` != "" ]]
+then
+  R1=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_f1\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
+  R2=`find $FQDIR/* | grep -P "\/$TAG[\/\._]" | grep "_r2\.f.*q" | sort | tr '\n' ',' | sed "s/,$//g"`
 else 
   >&2 echo "ERROR: No appropriate fastq files were found! Please check file formatting, and check if you have set the right FQDIR."
   exit 1
@@ -96,12 +102,12 @@ cat *.R2_head | $CMD seqtk sample -s100 - 200000 > test.R2.fastq &
 wait 
 rm *.R1_head *.R2_head
 
-NBC1=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-april-2014_rc.txt | wc -l`
-NBC2=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-august-2016.txt | wc -l`
-NBC3=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/3M-february-2018.txt | wc -l`
-NBC3_2=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/3M-5pgex-jan-2023.txt | wc -l`
-NBC4=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/3M-3pgex-may-2023.txt | wc -l`
-NBCA=`cat test.R1.fastq | awk 'NR%4==2' | grep -F -f $WL/737K-arc-v1.txt | wc -l`
+NBC1=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-14 | grep -F -f $WL/737K-april-2014_rc.txt | wc -l`
+NBC2=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-16 | grep -F -f $WL/737K-august-2016.txt | wc -l`
+NBC3=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-16 | grep -F -f $WL/3M-february-2018.txt | wc -l`
+NBC4=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-16 | grep -F -f $WL/3M-3pgex-may-2023.txt | wc -l`
+NBC5=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-16 | grep -F -f $WL/3M-5pgex-jan-2023.txt | wc -l`
+NBCA=`cat test.R1.fastq | awk 'NR%4==2' | cut -c-16 | grep -F -f $WL/737K-arc-v1.txt | wc -l`
 R1LEN=`cat test.R1.fastq | awk 'NR%4==2' | awk '{sum+=length($0)} END {printf "%d\n",sum/NR+0.5}'`
 R2LEN=`cat test.R2.fastq | awk 'NR%4==2' | awk '{sum+=length($0)} END {printf "%d\n",sum/NR+0.5}'`
 R1DIS=`cat test.R1.fastq | awk 'NR%4==2' | awk '{print length($0)}' | sort | uniq -c | wc -l`
@@ -120,14 +126,14 @@ then
 elif (( $NBC1 > 50000 )) 
 then
   BC=$WL/737K-april-2014_rc.txt
-elif (( $NBC4 > 50000 ))
+elif (( $NBC4 > 50000 )) 
 then
-  BC=$WL/3M-3pgex-may-2023.txt  
-elif (( $NBC3_2 > 50000 ))
+  BC=$WL/3M-3pgex-may-2023.txt
+elif (( $NBC5 > 50000 )) 
 then
   BC=$WL/3M-5pgex-jan-2023.txt
 else 
-  >&2 echo "ERROR: No whitelist has matched a random selection of 200,000 barcodes! Match counts: $NBC1 (v1), $NBC2 (v2), $NBC3 (v3), $NBC3_2 (5'v3), $NBC4 (v4), $NBCA (multiome)."
+  >&2 echo "ERROR: No whitelist has matched a random selection of 200,000 barcodes! Match counts: $NBC1 (v1), $NBC2 (v2), $NBC3 (v3), $NBC4 (v4-3p), $NBC5 (v4-5p), $NBCA (multiome)."
   exit 1
 fi 
 
@@ -193,14 +199,14 @@ STRAND=Forward
 
 STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fastq --runDirPerm All_RWX --outSAMtype None \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) \
-     --soloUMIlen $UMILEN --soloStrand Forward \
+     --soloUMIlen $UMILEN --soloStrand Forward --genomeLoad LoadAndKeep \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
      --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
      --soloFeatures Gene GeneFull --soloOutFileNames test_forward/ features.tsv barcodes.tsv matrix.mtx &> /dev/null 
 
 STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fastq --runDirPerm All_RWX --outSAMtype None \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) \
-     --soloUMIlen $UMILEN --soloStrand Reverse \
+     --soloUMIlen $UMILEN --soloStrand Reverse --genomeLoad LoadAndKeep \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
      --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
      --soloFeatures Gene GeneFull --soloOutFileNames test_reverse/ features.tsv barcodes.tsv matrix.mtx &> /dev/null
@@ -209,7 +215,7 @@ STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn test.R2.fastq test.R1.fas
 PCTFWD=`grep "Reads Mapped to GeneFull: Unique GeneFull" test_forward/GeneFull/Summary.csv | awk -F "," '{printf "%d\n",$2*100+0.5}'`
 PCTREV=`grep "Reads Mapped to GeneFull: Unique GeneFull" test_reverse/GeneFull/Summary.csv | awk -F "," '{printf "%d\n",$2*100+0.5}'`
 
-if (( $PCTREV >= $PCTFWD ))
+if (( $PCTREV > $PCTFWD )) 
 then
   STRAND=Reverse
 fi
@@ -227,18 +233,18 @@ fi
 
 echo "Done setting up the STARsolo run; here are final processing options:"
 echo "============================================================================="
-echo "Sample: $TAG" | tee $TAG.strand.txt
-echo "Paired-end mode: $PAIRED" | tee -a $TAG.strand.txt
-echo "Strand (Forward = 3', Reverse = 5'): $STRAND, %reads mapped to GeneFull: forward = $PCTFWD , reverse = $PCTREV" | tee -a $TAG.strand.txt
-echo "CB whitelist: $BC, matches out of 200,000: $NBC3 (v3), $NBC2 (v2), $NBC1 (v1), $NBCA (multiome) " | tee -a $TAG.strand.txt
-echo "CB length: $CBLEN" | tee -a $TAG.strand.txt
-echo "UMI length: $UMILEN" | tee -a $TAG.strand.txt
-echo "GZIP: $GZIP" | tee -a $TAG.strand.txt
-echo "-----------------------------------------------------------------------------" | tee -a $TAG.strand.txt
-echo "Read 1 files: $R1" | tee -a $TAG.strand.txt
-echo "-----------------------------------------------------------------------------" | tee -a $TAG.strand.txt
-echo "Read 2 files: $R2" | tee -a $TAG.strand.txt
-echo "-----------------------------------------------------------------------------" | tee -a $TAG.strand.txt
+echo "Sample: $TAG" | tee strand.txt
+echo "Paired-end mode: $PAIRED" | tee -a strand.txt
+echo "Strand (Forward = 3', Reverse = 5'): $STRAND, %reads mapped to GeneFull: forward = $PCTFWD , reverse = $PCTREV" | tee -a strand.txt
+echo "CB whitelist: $BC, matches out of 200,000: $NBC3 (v3), $NBC2 (v2), $NBC1 (v1), $NBCA (multiome) " | tee -a strand.txt
+echo "CB length: $CBLEN" | tee -a strand.txt
+echo "UMI length: $UMILEN" | tee -a strand.txt
+echo "GZIP: $GZIP" | tee -a strand.txt
+echo "-----------------------------------------------------------------------------" | tee -a strand.txt
+echo "Read 1 files: $R1" | tee -a strand.txt
+echo "-----------------------------------------------------------------------------" | tee -a strand.txt
+echo "Read 2 files: $R2" | tee -a strand.txt
+echo "-----------------------------------------------------------------------------" | tee -a strand.txt
 
 if [[ $PAIRED == "True" ]]
 then
@@ -246,14 +252,14 @@ then
   STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn $R1 $R2 --runDirPerm All_RWX $GZIP $BAM --soloBarcodeMate 1 --clip5pNbases 39 0 \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloCBstart 1 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) --soloUMIlen $UMILEN --soloStrand Forward \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
-     --soloCellFilter EmptyDrops_CR --outFilterScoreMin 30 \
-     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM --outReadsUnmapped Fastx
+     --soloCellFilter EmptyDrops_CR --outFilterScoreMin 30 --genomeLoad LoadAndRemove \
+     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM
 else 
   STAR --runThreadN $CPUS --genomeDir $REF --readFilesIn $R2 $R1 --runDirPerm All_RWX $GZIP $BAM \
      --soloType CB_UMI_Simple --soloCBwhitelist $BC --soloBarcodeReadLength 0 --soloCBlen $CBLEN --soloUMIstart $((CBLEN+1)) --soloUMIlen $UMILEN --soloStrand $STRAND \
      --soloUMIdedup 1MM_CR --soloCBmatchWLtype 1MM_multi_Nbase_pseudocounts --soloUMIfiltering MultiGeneUMI_CR \
-     --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 \
-     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM --outReadsUnmapped Fastx
+     --soloCellFilter EmptyDrops_CR --clipAdapterType CellRanger4 --outFilterScoreMin 30 --genomeLoad LoadAndRemove \
+     --soloFeatures Gene GeneFull Velocyto --soloOutFileNames output/ features.tsv barcodes.tsv matrix.mtx --soloMultiMappers EM
 fi
 
 ## index the BAM file

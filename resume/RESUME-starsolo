@@ -1,0 +1,13 @@
+#!/bin/bash
+
+set -euo pipefail
+
+samplefile=actions/samples.txt
+
+[[ -e "$samplefile" ]] || (echo "File "$samplefile" not found" && false)
+
+nextflow run -r 23-230 cellgeni/nf-starsolo \
+  -entry tenx \
+  --samplefile $samplefile \
+  --ansi-log false \
+  -resume
